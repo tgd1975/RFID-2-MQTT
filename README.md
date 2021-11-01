@@ -1,6 +1,8 @@
 # RFID-2-MQTT
 a simple mqtt client that publishes the current state of the RFID-RC522 reader. Based on https://github.com/mec-kon/simple-mqtt-client and https://github.com/Calvin-LL/RPi-MFRC522.
 
+work-in-progress!
+
 ## Installation: ## 
 First you need to install all required dependencies.
 You can do this with ```sudo apt-get install cmake libmosquittopp-dev build-essential``` on Debian or Ubuntu.
