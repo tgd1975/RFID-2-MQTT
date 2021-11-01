@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(simple-mqtt-client)
+project(rfid-2-mqtt)
 
 set(CMAKE_CXX_STANDARD 17)
 
