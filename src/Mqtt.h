@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "State.h"
+
 #define TAG "Mqtt.cpp: "
 
 using namespace std;
@@ -20,8 +22,10 @@ private:
     string id;
     string host;
     string publish_topic;
-    vector<string> subscription_topic_list;
+    string subscription_topic;
     int port;
+
+    State last_rfid_state;
 
 
     /**
@@ -47,6 +51,18 @@ private:
      */
     void on_message(const struct mosquitto_message *message);
 
+    /**
+     * @brief publish a message on a given topic
+     * @param message null terminated string of the topic to publish to
+     * @return True, if publication was successfully
+     */
+    bool publish();
+
+    /**
+     * @brief subscribe to a topic
+     * @return True, if subscription was successfully
+     */
+    bool subscribe();
 public:
     /**
      * @brief Mqtt constructor
@@ -61,7 +77,7 @@ public:
      * @param username username, if expected by the server
      * @param password password, if expected by the server
      */
-    Mqtt(string id, string publish_topic,vector<string> subscription_topic_list, string host, int port, string username, string password);
+    Mqtt(string id, string publish_topic, string subscription_topic, string host, int port, string username, string password);
 
     /**
      * @brief Mqtt constructor
@@ -74,22 +90,11 @@ public:
      * @param host the hostname or ip address of the broker to connect to
      * @param port the network port to connect to (usually 1883)
      */
-    Mqtt(string id, string publish_topic,vector<string> subscription_topic_list, string host, int port);
+    Mqtt(string id, string publish_topic, string subscription_topic, string host, int port);
 
     ~Mqtt();
 
-    /**
-     * @brief publish a message on a given topic
-     * @param message null terminated string of the topic to publish to
-     * @return True, if publication was successfully
-     */
-    bool publish(string message);
-
-    /**
-     * @brief subscribe to a topic
-     * @return True, if subscription was successfully
-     */
-    bool subscribe();
+    bool publishRfidState(const State& currentRfidState);
 };
 
 

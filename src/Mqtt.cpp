@@ -1,6 +1,7 @@
 #include "Mqtt.h"
+#include <algorithm>
 
-Mqtt::Mqtt(string id, string publish_topic,vector<string> subscription_topic_list, string host, int port, string username, string password){
+Mqtt::Mqtt(string id, string publish_topic, string subscription_topic, string host, int port, string username, string password){
 
     mosqpp::lib_init();
     this->id = id;
@@ -8,7 +9,8 @@ Mqtt::Mqtt(string id, string publish_topic,vector<string> subscription_topic_lis
     this->port = port;
     this->host = host;
     this->publish_topic = publish_topic;
-    this->subscription_topic_list = subscription_topic_list;
+    this->subscription_topic = subscription_topic;
+    this->last_rfid_state = State();
 
     mosquittopp::username_pw_set(username.c_str(), password.c_str());
 
@@ -19,12 +21,12 @@ Mqtt::Mqtt(string id, string publish_topic,vector<string> subscription_topic_lis
      */
     connect_async(this->host.c_str(), this->port, this->keepalive);
     loop_start();
-
+    subscribe();
 }
 
 
 
-Mqtt::Mqtt(string id, string publish_topic,vector<string> subscription_topic_list , string host, int port) : mosquittopp(id.c_str())
+Mqtt::Mqtt(string id, string publish_topic, string subscription_topic, string host, int port) : mosquittopp(id.c_str())
 {
     mosqpp::lib_init();
     this->id = id;
@@ -32,8 +34,8 @@ Mqtt::Mqtt(string id, string publish_topic,vector<string> subscription_topic_lis
     this->port = port;
     this->host = host;
     this->publish_topic = publish_topic;
-    this->subscription_topic_list = subscription_topic_list;
-
+    this->subscription_topic = subscription_topic;
+    this->last_rfid_state = State();    
 
 
     /*
@@ -42,6 +44,7 @@ Mqtt::Mqtt(string id, string publish_topic,vector<string> subscription_topic_lis
      */
     connect_async(this->host.c_str(), this->port, this->keepalive);
     loop_start();
+    subscribe();
 };
 
 Mqtt::~Mqtt() {
@@ -50,7 +53,7 @@ Mqtt::~Mqtt() {
     mosqpp::lib_cleanup();
 }
 
-bool Mqtt::publish(string message)
+bool Mqtt::publish()
 {
     /*
      * NULL: pointer to an int.  If not NULL, the function will set this to the message id of this particular message.
@@ -69,17 +72,20 @@ bool Mqtt::publish(string message)
      * false: set to true to make the message retained.
      *
      */
+
+    string message = last_rfid_state.getJson();
+
+    cout << TAG << "publishing message \"" << message << "\"" << endl;
+
     int answer = mosqpp::mosquittopp::publish(nullptr, publish_topic.c_str(), message.length(), message.c_str(), 1, false);
     return (answer == MOSQ_ERR_SUCCESS);
 }
 
 bool Mqtt::subscribe() {
     bool success = true;
-    for(int i=0; i<subscription_topic_list.size(); i++){
-        int answer = mosquittopp::subscribe(nullptr, subscription_topic_list[i].c_str());
-        if(answer != MOSQ_ERR_SUCCESS){
-            success = false;
-        }
+    int answer = mosquittopp::subscribe(nullptr, subscription_topic.c_str());
+    if(answer != MOSQ_ERR_SUCCESS){
+        success = false;
     }
     return success;
 }
@@ -88,13 +94,21 @@ void Mqtt::on_subscribe(int, int, const int *) {
     cout << TAG <<"Subscription succeeded." << endl;
 }
 
+inline void toUpperCase(std::string& str)
+{
+    std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+}
+
 void Mqtt::on_message(const struct mosquitto_message *message) {
 
     string payload = string(static_cast<char *>(message->payload));
     string topic = string(message->topic);
 
-    cout<< TAG << "payload: " << payload << endl;
-    cout<< TAG << "topic: " << topic << endl;
+    cout<< TAG << "topic: " << topic << " payload: " << payload << endl;
+
+    toUpperCase(payload);
+
+    if (payload == "TRUE") publish();
 }
 
 void Mqtt::on_disconnect(int rc) {
@@ -113,4 +127,14 @@ void Mqtt::on_connect(int rc)
 void Mqtt::on_publish(int mid)
 {
     cout << TAG << "Message (" << mid << ") succeed to be published " << endl;
+}
+
+bool Mqtt::publishRfidState(const State& currentRfidState) {
+    if (currentRfidState == this->last_rfid_state) {
+        this->last_rfid_state.updateTimestampTo(currentRfidState);
+        return true;
+    } else {
+        this->last_rfid_state = State(currentRfidState);
+        return publish();
+    }
 }

@@ -1,33 +1,70 @@
 #include <iostream>
+#include <string>
+#include <chrono>
+#include <thread>
+#include <unistd.h> // getuid
+
 #include "Mqtt.h"
+#include "params.h"
+#include "MFRC522.h"
 
-int main() {
+std::string formatAs02X(uint8_t hex) {
+    char buff[100];
+    snprintf(buff, sizeof(buff), "%02X", hex);
+    return buff;
+}
 
-    /**
-     *  List in which all subscription topics are stored that the broker should subscribe too
-     */
-    vector<string> subscription_topic_list;
-    subscription_topic_list.push_back("subscribe/test");
-    subscription_topic_list.push_back("subscribe/test2");
+std::string uidToString(uint8_t *buffer, size_t bufferSize) {
+    std::string result = "";
+    for (size_t i=0; i<bufferSize; i++) {
+        result.append("::"+formatAs02X(buffer[i]));
+    }
+    if (!result.empty()) {
+        result = result.substr(2);
+    }
+    return result;
+}
 
-    /*
-     * Create a new Client named "pc-client" that publishes on "publish/test".
-     * This broker has the IP address "192.168.1.100" and the port 1883.
-     * The username is set to "user" whith password "passw0rd"
-     */
-    Mqtt *mqtt = new Mqtt("pc-client", "publish/test", subscription_topic_list, "192.168.1.30", 1883, "user", "passw0rd");
+int main(int argc, char **argv) {
+    if (getuid()) {
+        cout << "programm must be executed as root." << endl;
+        return 1;
+    }
 
-    // If you don't want to use credentials, use this function
-    // Mqtt *mqtt = new Mqtt("pc-client", "publish/test", subscription_topic_list, "192.168.1.30", 1883);
+    params p = getParams(argc, argv);
 
-    mqtt->publish("publish works");
-    mqtt->subscribe();
+    Mqtt *mqtt = new Mqtt(p.mqtt_id, p.topic_publish, p.topic_subscribe, p.host, p.port, p.username, p.password);
+    MFRC522 rfid = MFRC522(p.pin_cs, p.pin_rst);  // Instance of the class
+    
+    State rfid_state = State();
 
-    cout << "type quit to quit" << endl;
-    string in;
-    do {
-     cin >> in;
-    }while (in != "quit");
+    rfid.PCD_Init();  
+
+    while (1) {
+        if (rfid.PICC_IsCardPresent()) {
+            if (!rfid_state.getCardPresent()) {
+                if (rfid.PICC_ReadCardSerial()) {
+                    rfid_state.setValues(uidToString(rfid.uid.uidByte, rfid.uid.size), true);
+                    mqtt->publishRfidState(rfid_state);
+                }
+            }
+            rfid.PICC_HaltA();
+            rfid.PCD_StopCrypto1();
+        } else {
+            if (rfid_state.getCardPresent()) {
+                // debouncing - wait for 100 ms and try again
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                if (!rfid.PICC_IsCardPresent()) {
+                    rfid_state.setValues("", false);
+                    mqtt->publishRfidState(rfid_state);
+                } else {
+                    rfid.PICC_HaltA();
+                    rfid.PCD_StopCrypto1();
+                }
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
 
     delete mqtt;
 
