@@ -5,7 +5,7 @@
 #include <unistd.h> // getuid
 
 #include "Mqtt.h"
-#include "params.h"
+#include "Params.h"
 #include "MFRC522.h"
 
 std::string formatAs02X(uint8_t hex) {
@@ -26,12 +26,18 @@ std::string uidToString(uint8_t *buffer, size_t bufferSize) {
 }
 
 int main(int argc, char **argv) {
-    if (getuid()) {
-        cout << "programm must be executed as root." << endl;
+    Params p = Params();
+    if (!p.parseArgs(argc, argv)) {
+        p.print_usage();
         return 1;
     }
 
-    params p = getParams(argc, argv);
+    if (getuid()) {
+        std::cout << "programm must be executed as root." << std::endl;
+        return 1;
+    }
+
+    p.print_params();
 
     Mqtt *mqtt = new Mqtt(p.mqtt_id, p.topic_publish, p.topic_subscribe, p.host, p.port, p.username, p.password);
     MFRC522 rfid = MFRC522(p.pin_cs, p.pin_rst);  // Instance of the class
