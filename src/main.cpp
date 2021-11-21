@@ -17,7 +17,7 @@ std::string formatAs02X(uint8_t hex) {
 std::string uidToString(uint8_t *buffer, size_t bufferSize) {
     std::string result = "";
     for (size_t i=0; i<bufferSize; i++) {
-        result.append("::"+formatAs02X(buffer[i]));
+        result.append(":"+formatAs02X(buffer[i]));
     }
     if (!result.empty()) {
         result = result.substr(2);

@@ -1,7 +1,7 @@
 # RFID-2-MQTT
 A simple mqtt client that publishes the current state of the RFID-RC522 reader. Based on https://github.com/mec-kon/simple-mqtt-client and https://github.com/Calvin-LL/RPi-MFRC522.
 
-Upon every change of state of the rfid-reader (card appears, card disappears), a json state message is published: ```{"uid": "116:4:126:1", "present": "TRUE", "timestamp": "2009-11-10T23:00:00.0Z"}```. With uid equals the serial number of the present card and present equals TRUE if a card is present. If no card is present, uid is an empty string and present equals "FALSE". Timestamp is the local time when the card was accessed. 
+Upon every change of state of the rfid-reader (card appears, card disappears), a json state message is published: ```{"uid": "10:0A:2A:00", "present": "TRUE", "timestamp": "2009-11-10T23:00:00.0Z"}```. With uid equals the serial number of the present card and present equals TRUE if a card is present. If no card is present, uid is an empty string and present equals "FALSE". Timestamp is the local time when the card was accessed. 
 
 The program listens on the subscribed topic for the message "TRUE". As soon as this message is received, it will broadcast the current state with the current timestamp. 
 
