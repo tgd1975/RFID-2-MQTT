@@ -20,7 +20,7 @@ std::string uidToString(uint8_t *buffer, size_t bufferSize) {
         result.append(":"+formatAs02X(buffer[i]));
     }
     if (!result.empty()) {
-        result = result.substr(2);
+        result = result.substr(1);
     }
     return result;
 }
